@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Apply a default font and background without using @apply (avoids unknown-utility errors)
+   We use the same defaults Tailwind's `font-sans` and `bg-gray-50` provide. */
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  background-color: #f9fafb; /* bg-gray-50 */
+}
