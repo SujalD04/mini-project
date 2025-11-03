@@ -1,5 +1,6 @@
 
 # Mini Autonomous Inventory Management & Forecasting as a Service
+This project is a proactive, data-driven system designed to solve inventory inefficiencies for retailers. It accurately predicts demand and automates restocking to create a smarter, more efficient operation by minimizing stockouts and overstocking.
 
 ## Key Features & Benefits
 
