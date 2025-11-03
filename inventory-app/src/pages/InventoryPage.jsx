@@ -1,4 +1,6 @@
 import React from 'react';
+// 1. Import Link
+import { Link } from 'react-router-dom'; 
 import { useInventory } from '../utils/InventoryContext.jsx';
 import { formatINR } from '../utils/dataLogic.js';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
@@ -35,32 +37,40 @@ const InventoryPage = () => {
             <h2 className="text-xl font-bold text-indigo-700 mb-4 border-b border-gray-200 pb-2">{category} ({groupedInventory[category].length} items)</h2>
             <div className="space-y-3">
               {groupedInventory[category].map(item => (
-                <div key={item.itemId} className="p-3 bg-gray-50 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm hover:bg-indigo-50 transition-colors">
-                  
-                  {/* Item Info */}
-                  <div className="flex-1 min-w-0 mb-2 sm:mb-0 pr-4">
-                    <p className="font-semibold text-gray-900 truncate">{item.name}</p>
-                    <p className="text-gray-500 text-xs">ID: {item.itemId}</p>
+                // 2. Wrap the entire item div in a Link component
+                <Link 
+                  key={item.itemId} // 3. Move key to the Link
+                  to={`/inventory/${item.itemId}`}
+                  className="block rounded-lg" // Make the link a block element
+                >
+                  <div className="p-3 bg-gray-50 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm hover:bg-indigo-50 hover:shadow-md transition-all">
+                    
+                    {/* Item Info */}
+                    <div className="flex-1 min-w-0 mb-2 sm:mb-0 pr-4">
+                      <p className="font-semibold text-gray-900 truncate">{item.name}</p>
+                      <p className="text-gray-500 text-xs">ID: {item.itemId}</p>
+                    </div>
+                    
+                    {/* Item Stats */}
+                    <div className="flex w-full sm:w-auto space-x-4 text-right justify-end">
+                      <div className="w-24">
+                        <p className="text-xs text-gray-500 uppercase font-medium">Stock</p>
+                        <p className="font-bold text-lg text-gray-800">{item.currentStock}</p>
+                      </div>
+                      <div className="w-24">
+                        <p className="text-xs text-gray-500 uppercase font-medium">Unit Price</p>
+                        <p className="font-bold text-lg text-green-600">{formatINR(item.price)}</p>
+                      </div>
+                      <div className="w-24">
+                        <p className="text-xs text-gray-500 uppercase font-medium">ROP</p>
+                        <span className={`px-2.5 py-1 text-sm font-semibold rounded-full ${item.currentStock < item.reorderPoint ? 'bg-red-100 text-red-800' : 'bg-gray-200 text-gray-700'}`}>
+                          {item.reorderPoint}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  
-                  {/* Item Stats */}
-                  <div className="flex w-full sm:w-auto space-x-4 text-right justify-end">
-                    <div className="w-24">
-                      <p className="text-xs text-gray-500 uppercase font-medium">Stock</p>
-                      <p className="font-bold text-lg text-gray-800">{item.currentStock}</p>
-                    </div>
-                    <div className="w-24">
-                      <p className="text-xs text-gray-500 uppercase font-medium">Unit Price</p>
-                      <p className="font-bold text-lg text-green-600">{formatINR(item.price)}</p>
-                    </div>
-                    <div className="w-24">
-                      <p className="text-xs text-gray-500 uppercase font-medium">ROP</p>
-                      <span className={`px-2.5 py-1 text-sm font-semibold rounded-full ${item.currentStock < item.reorderPoint ? 'bg-red-100 text-red-800' : 'bg-gray-200 text-gray-700'}`}>
-                        {item.reorderPoint}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                </Link>
+                // 4. End of Link component
               ))}
             </div>
           </div>
