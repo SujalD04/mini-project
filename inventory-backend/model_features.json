@@ -1,0 +1,28 @@
+{
+    "numerical": [
+        "Lag_Sales_D-1",
+        "Lag_Sales_D-2",
+        "Lag_Sales_D-7",
+        "Lag_Inventory_D-1",
+        "Rolling_Mean_7D",
+        "Price",
+        "Discount",
+        "Holiday/Promotion",
+        "Competitor Pricing",
+        "Region_North",
+        "Region_South",
+        "Region_West",
+        "Weather Condition_Rainy",
+        "Weather Condition_Snowy",
+        "Weather Condition_Sunny",
+        "Seasonality_Spring",
+        "Seasonality_Summer",
+        "Seasonality_Winter"
+    ],
+    "categorical": [
+        "Region",
+        "Weather Condition",
+        "Seasonality"
+    ],
+    "category_id_col": "Category_ID"
+}

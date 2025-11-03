@@ -1,18 +1,17 @@
 import React, { useState, useMemo, useCallback } from 'react';
 
 // === IMPORTING PAGES AND COMPONENTS ===
-// Note the correct relative paths for the modules:
-
-// Pages
 import InventoryPage from './pages/InventoryPage';
 import CartPage from './pages/CartPage';
 import StatsPage from './pages/StatsPage';
-
-// Components (We need the TabButton component here)
 import TabButton from './components/TabButton'; 
 
-// Utilities
-import { generateMockInventory, mockPredictDemand, calculateRestockOrder } from './utils/dataLogic';
+// === IMPORTING UTILITIES ===
+import { generateMockInventory } from './utils/dataLogic';
+// --- MODIFIED ---
+// Import our new batch function
+import { fetchBatchRecommendations } from './utils/api';
+// --- END MODIFICATION ---
 
 // --- State and Logic Hook ---
 
@@ -22,6 +21,14 @@ const useInventoryState = () => {
     const [activeTab, setActiveTab] = useState('inventory');
     const [restockCart, setRestockCart] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [apiError, setApiError] = useState(null);
+    
+    // --- ADDED ---
+    // Create a fast lookup map for inventory items. (More professional)
+    const inventoryMap = useMemo(() => 
+        new Map(inventory.map(item => [item.itemId, item])), 
+    [inventory]);
+    // --- END ADDED ---
     
     // Memoized filtered list for the Inventory view
     const filteredInventory = useMemo(() => {
@@ -30,14 +37,12 @@ const useInventoryState = () => {
             item.category.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
-        // Group by category
         const grouped = results.reduce((acc, item) => {
             acc[item.category] = acc[item.category] || [];
             acc[item.category].push(item);
             return acc;
         }, {});
 
-        // Sort categories alphabetically
         const sortedKeys = Object.keys(grouped).sort();
         const sortedGrouped = {};
         sortedKeys.forEach(key => {
@@ -47,44 +52,77 @@ const useInventoryState = () => {
         return sortedGrouped;
     }, [inventory, searchTerm]);
 
+
+    // --- THIS IS THE CORE CHANGE ---
     // Function to handle the Restock generation button
-    const generateRestockOrder = useCallback(() => {
+    const generateRestockOrder = useCallback(async () => { // Make function async
         setIsGenerating(true);
-        // In a real app, this would be an API call to your FastAPI service
-        setTimeout(() => {
+        setApiError(null); 
+        setRestockCart([]); 
+
+        try {
+            // 1. Call the new batch API function ONCE
+            // This sends all items and gets back a list of recommendations
+            const recommendations = await fetchBatchRecommendations(inventory);
+
             const newCart = [];
-            inventory.forEach(item => {
-                // This is where your TensorFlow model prediction would go
-                const predictedDemand = mockPredictDemand(item);
-                const orderResult = calculateRestockOrder(item, predictedDemand);
+            
+            // 2. Process the results list
+            for (const rec of recommendations) {
                 
-                if (orderResult.orderQuantity > 0) {
-                    newCart.push({ ...item, ...orderResult });
+                // 3. Check the AI Agent's decision
+                if (rec.recommendation === 'Restock') {
+                    
+                    // 4. Get the original item data from our fast lookup map
+                    const item = inventoryMap.get(rec.itemId);
+
+                    if (item) {
+                        // 5. Add item to cart using data from the AI
+                        // We combine the original item data (name, price) 
+                        // with the new recommendation data (predictedDemand, etc.)
+                        newCart.push({ 
+                            ...item, // (name, price, category, etc.)
+                            predictedDemand: rec.predicted_demand_next_7_days,
+                            orderQuantity: rec.suggested_quantity,
+                            reorderPoint: rec.reorder_point,
+                            status: item.currentStock < rec.reorder_point ? 'Critical Low' : 'Restock',
+                            badgeColor: item.currentStock < rec.reorder_point ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800',
+                            isCritical: item.currentStock < rec.reorder_point,
+                        });
+                    }
                 }
-            });
-            // Sort critical items first
+            } // End of loop
+
+            // 6. Sort critical items first and update the cart state
             newCart.sort((a, b) => b.isCritical - a.isCritical);
             setRestockCart(newCart);
-            setIsGenerating(false);
             setActiveTab('cart'); // Automatically switch to the cart
-        }, 1500); 
-    }, [inventory]);
+
+        } catch (err) {
+            console.error("A critical error occurred:", err);
+            // Use the actual error message from the API
+            setApiError(err.message || "Failed to connect to the AI model. Is the Flask server running?");
+        } finally {
+            setIsGenerating(false); // Stop the loading spinner
+        }
+        
+    }, [inventory, inventoryMap]); // Dependencies updated
 
     return {
         activeTab, 
         setActiveTab,
         searchTerm, 
-        setSearchTerm, // Retained only once
+        setSearchTerm,
         filteredInventory,
         restockCart,
         generateRestockOrder,
         isGenerating,
-        // Removed duplicate setSearchTerm entry
+        apiError 
     };
 };
 
 // --- MAIN APP COMPONENT ---
-
+// This component is UNCHANGED, as all logic is in the hook.
 const App = () => {
     const { 
         activeTab, setActiveTab, 
@@ -92,7 +130,8 @@ const App = () => {
         filteredInventory, 
         restockCart, 
         generateRestockOrder,
-        isGenerating
+        isGenerating,
+        apiError 
     } = useInventoryState();
 
     const renderPage = () => {
@@ -137,6 +176,14 @@ const App = () => {
                         <TabButton tabName="cart" activeTab={activeTab} setActiveTab={setActiveTab} />
                         <TabButton tabName="statistics" activeTab={activeTab} setActiveTab={setActiveTab} />
                     </nav>
+
+                    {/* --- ADDED ERROR DISPLAY --- */}
+                    {apiError && (
+                        <div className="p-4 my-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                            <strong>Error:</strong> {apiError}
+                        </div>
+                    )}
+                    {/* --- END ADDED --- */}
 
                     {/* Tab Content */}
                     {renderPage()}

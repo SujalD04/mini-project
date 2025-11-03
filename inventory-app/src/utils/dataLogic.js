@@ -4,7 +4,8 @@ export const INR_CONVERSION_FACTOR = 83;
 export const SAFETY_STOCK = 75; // Units (Based on previous RMSE analysis)
 export const MIN_ORDER_QTY = 50; // Units (Case Size)
 
-const CATEGORIES = ['Electronics', 'Groceries', 'Clothing', 'Furniture', 'Tools', 'Books', 'Toys', 'Cosmetics'];
+// --- FIX 1: Reduced to the 5 categories your model was trained on ---
+const CATEGORIES = ['Clothing', 'Electronics', 'Furniture', 'Groceries', 'Toys'];
 
 const ITEM_NAMES_BY_CATEGORY = {
     'Electronics': [
@@ -27,28 +28,79 @@ const ITEM_NAMES_BY_CATEGORY = {
         'Queen Bed Frame', '4-Shelf Bookshelf', 'Sectional Sofa', 'Accent Lamp', 
         'Dining Table (Oak)', 'Bar Stools', 'Memory Foam Mattress'
     ],
-    'Tools': [
-        '20V Cordless Drill', 'Universal Socket Set', 'Digital Multimeter', 'Telescopic Ladder', 
-        'Orbital Sander', 'Adjustable Wrench', 'Precision Screwdriver', 'Safety Goggles', 
-        'Magnetic Stud Finder', 'Heavy Duty Utility Knife'
-    ],
-    'Books': [
-        'Sci-Fi Novel: Martian', 'Atomic Habits', 'The Great Gatsby', 'Sapiens', 
-        'Python Guide', 'Silent Patient', 'Cookbook: Italian', 'Kids Picture Book', 
-        'Poetry Collection', 'Graphic Novel'
-    ],
     'Toys': [
         'Lego City Fire Truck', 'Action Figure', 'Remote Control Drone', 'Board Game: Catan', 
         'Puzzle Set', 'Barbie Dreamhouse', 'Wooden Blocks', 'Model Car Kit', 
         'Art Supplies Box', 'Fidget Spinner'
-    ],
-    'Cosmetics': [
-        'Hydrating Moisturizer', 'SPF 50 Sunscreen', 'Volumizing Mascara', 'Nail Polish Set', 
-        'Hyaluronic Acid Serum', 'Charcoal Face Mask', 'Waterproof Eyeliner', 'Lip Gloss', 
-        'Perfume (Ocean Mist)', 'Makeup Brush Set'
     ]
+    // Removed 'Tools', 'Books', 'Cosmetics'
 };
-const CATEGORY_TO_ID = { 'Electronics': 1, 'Groceries': 3, 'Clothing': 0, 'Furniture': 2, 'Tools': 5, 'Books': 6, 'Toys': 4, 'Cosmetics': 7 };
+
+// --- FIX 1 (Continued): Updated the ID map ---
+const CATEGORY_TO_ID = { 
+    'Electronics': 1, 
+    'Groceries': 3, 
+    'Clothing': 0, 
+    'Furniture': 2, 
+    'Toys': 4 
+};
+
+
+/**
+ * NEW HELPER FUNCTION
+ * Generates the 45-day structured history your API needs.
+ */
+const generateMockHistoricalData = () => {
+    const data = [];
+    const regions = ['North', 'South', 'East', 'West'];
+    const weathers = ['Sunny', 'Rainy', 'Cloudy'];
+    const seasons = ['Spring', 'Summer', 'Autumn', 'Winter'];
+
+    // --- Create Realistic Patterns ---
+    // 1. Base Trend: Give each item a slightly different starting point and trend
+    const baseSales = Math.random() * 30 + 20; // Start between 20-50
+    const trend = (Math.random() - 0.5) * 0.5; // Small daily trend (up or down)
+
+    // 2. Weekly Seasonality: Create a 7-day pattern (e.g., spikes on day 5 & 6)
+    const weeklyPattern = [0.8, 0.9, 0.85, 1.0, 1.2, 1.3, 0.9];
+
+    for (let i = 0; i < 45; i++) {
+        // --- Calculate Patterned Sales ---
+        // 3. Noise: Add a small random amount
+        const noise = (Math.random() - 0.5) * 5;
+        
+        // Combine base, trend, seasonality, and noise
+        let sales = (baseSales + (i * trend)) * weeklyPattern[i % 7] + noise;
+        // Ensure sales are never negative
+        sales = Math.max(10, sales); 
+
+        // Lagged features will be based on this patterned 'sales'
+        const lag1 = data[i - 1] ? data[i - 1]["Lag_Sales_D-1"] : sales;
+        const lag2 = data[i - 2] ? data[i - 2]["Lag_Sales_D-1"] : sales;
+        const lag7 = data[i - 7] ? data[i - 7]["Lag_Sales_D-1"] : sales;
+
+        data.push({
+            // Lagged/Rolling features (now based on the pattern)
+            "Lag_Sales_D-1": Math.floor(lag1),
+            "Lag_Sales_D-2": Math.floor(lag2),
+            "Lag_Sales_D-7": Math.floor(lag7),
+            "Lag_Inventory_D-1": Math.floor(Math.random() * 200) + 50,
+            "Rolling_Mean_7D": Math.floor((lag1 + lag2 + lag7) / 3), // Simple rolling mean mock
+            
+            // Exogenous features (these can stay random)
+            "Price": Math.floor(Math.random() * 100) + 20,
+            "Discount": Math.random() > 0.7 ? 0.1 : 0.0,
+            "Holiday/Promotion": Math.random() > 0.9 ? 1 : 0,
+            "Competitor Pricing": Math.floor(Math.random() * 100) + 20,
+
+            // Raw categorical features (Flask will one-hot encode these)
+            "Region": regions[i % regions.length],
+            "Weather Condition": weathers[i % weathers.length],
+            "Seasonality": seasons[i % seasons.length]
+        });
+    }
+    return data;
+};
 
 
 export const generateMockInventory = () => {
@@ -56,65 +108,38 @@ export const generateMockInventory = () => {
     let itemIdCounter = 1000;
     
     CATEGORIES.forEach(category => {
-        const categoryItemNames = ITEM_NAMES_BY_CATEGORY[category];
+        const categoryItemNames = ITEM_NAMES_BY_CATEGORY[category] || ['Default Item'];
         
         for (let i = 0; i < 10; i++) {
+            const itemName = categoryItemNames[i] || `Default ${i}`;
             const itemId = `P${itemIdCounter++}`;
             const basePrice = (Math.random() * 100 + 10); 
-            const priceINR = parseFloat((basePrice * INR_CONVERSION_FACTOR).toFixed(0)); // Round to nearest Rupee
-
+            const priceINR = parseFloat((basePrice * INR_CONVERSION_FACTOR).toFixed(0));
             const stockLevel = Math.floor(Math.random() * 450) + 50; 
             const reorderPoint = Math.floor(stockLevel * 0.3) + 20; 
             
             inventory.push({
                 itemId,
-                name: `${categoryItemNames[i]} (${itemId.slice(-3)})`, 
+                name: `${itemName} (${itemId.slice(-3)})`, 
                 category: category,
                 categoryId: CATEGORY_TO_ID[category],
                 currentStock: stockLevel,
                 price: priceINR, 
                 reorderPoint: reorderPoint,
                 storeId: 'S001',
-                historicalData: Array(45).fill(0).map(() => Math.floor(Math.random() * 100) + 1)
+                historicalData: generateMockHistoricalData()
             });
         }
     });
     return inventory;
 };
 
-// --- MOCK PREDICTION AND POLICY ---
 
-export const mockPredictDemand = (item, mockErrorFactor = 0.95) => {
-    const historicalDemand = item.historicalData.slice(-7).reduce((a, b) => a + b, 0);
-    const predictedSales = (historicalDemand * mockErrorFactor) + (Math.random() * 50);
-    return Math.max(0, predictedSales);
-};
+// --- MOCK PREDICTION AND POLICY (REMOVED) ---
+// Your Python API now handles all this logic.
 
-export const calculateRestockOrder = (item, predictedDemand) => {
-    const targetStock = predictedDemand + SAFETY_STOCK;
-    const rawOrderQuantity = targetStock - item.currentStock;
-    
-    let orderQuantity = 0;
-
-    if (rawOrderQuantity > MIN_ORDER_QTY) {
-        orderQuantity = Math.ceil(rawOrderQuantity / MIN_ORDER_QTY) * MIN_ORDER_QTY;
-    }
-
-    const status = item.currentStock < item.reorderPoint ? 'Critical Low' : (rawOrderQuantity > 0 ? 'Review Needed' : 'In Stock');
-    const badgeColor = item.currentStock < item.reorderPoint ? 'bg-red-100 text-red-800' : (rawOrderQuantity > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800');
-
-    return {
-        orderQuantity: orderQuantity,
-        predictedDemand: predictedDemand,
-        targetStock: targetStock,
-        status: status,
-        badgeColor: badgeColor,
-        isCritical: item.currentStock < item.reorderPoint,
-    };
-};
 
 export const formatINR = (amount) => {
-    // Ensures a clean Indian Rupee format
     if (typeof amount !== 'number') return '₹0';
     return `₹${Math.round(amount).toLocaleString('en-IN')}`;
 };
