@@ -1,11 +1,13 @@
 import React, { useState, useMemo, useCallback, createContext, useContext } from 'react';
 import { generateMockInventory } from './dataLogic.js';
 import { fetchBatchRecommendations } from './api.js';
+// 1. Import toast
+import { toast } from 'react-hot-toast';
 
-// 1. Create the context
+// 2. Create the context
 const InventoryContext = createContext();
 
-// 2. Create the Provider (this will wrap your whole app)
+// 3. Create the Provider (this will wrap your whole app)
 export const InventoryProvider = ({ children }) => {
     // All your existing state from App.jsx is moved here
     const [inventory, setInventory] = useState(() => generateMockInventory());
@@ -43,6 +45,9 @@ export const InventoryProvider = ({ children }) => {
         setApiError(null); 
         setRestockCart([]); 
 
+        // --- 4. Fire a loading toast ---
+        const toastId = toast.loading('Running AI analysis...');
+
         try {
             const recommendations = await fetchBatchRecommendations(inventory);
             const newCart = [];
@@ -65,10 +70,25 @@ export const InventoryProvider = ({ children }) => {
             } 
             newCart.sort((a, b) => b.isCritical - a.isCritical);
             setRestockCart(newCart);
+            
+            // --- 5. Fire success toast ---
+            if (newCart.length > 0) {
+              toast.success(`Success! AI Order generated with ${newCart.length} items.`, { id: toastId });
+            } else {
+              toast.success("AI analysis complete. No items require restocking.", { id: toastId });
+            }
+            // --- End of change ---
+
             navigateToCart(); // This will navigate to the cart page on success
         } catch (err) {
             console.error("A critical error occurred:", err);
-            setApiError(err.message || "Failed to connect to the AI model.");
+            const errorMsg = err.message || "Failed to connect to the AI model.";
+            setApiError(errorMsg);
+            
+            // --- 6. Fire error toast ---
+            toast.error(errorMsg, { id: toastId });
+            // --- End of change ---
+
         } finally {
             setIsGenerating(false);
         }

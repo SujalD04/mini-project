@@ -1,9 +1,10 @@
 import React from 'react';
-// 1. Import Link
 import { Link } from 'react-router-dom'; 
 import { useInventory } from '../utils/InventoryContext.jsx';
 import { formatINR } from '../utils/dataLogic.js';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+// 1. Import the new StockLevelBar
+import StockLevelBar from '../components/StockLevelBar.jsx';
 
 const InventoryPage = () => {
   // Get state and setters from the context
@@ -37,12 +38,13 @@ const InventoryPage = () => {
             <h2 className="text-xl font-bold text-indigo-700 mb-4 border-b border-gray-200 pb-2">{category} ({groupedInventory[category].length} items)</h2>
             <div className="space-y-3">
               {groupedInventory[category].map(item => (
-                // 2. Wrap the entire item div in a Link component
+                // Wrap the entire item div in a Link component
                 <Link 
-                  key={item.itemId} // 3. Move key to the Link
+                  key={item.itemId} 
                   to={`/inventory/${item.itemId}`}
                   className="block rounded-lg" // Make the link a block element
                 >
+                  {/* 2. Added items-center for better alignment */}
                   <div className="p-3 bg-gray-50 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm hover:bg-indigo-50 hover:shadow-md transition-all">
                     
                     {/* Item Info */}
@@ -51,12 +53,20 @@ const InventoryPage = () => {
                       <p className="text-gray-500 text-xs">ID: {item.itemId}</p>
                     </div>
                     
-                    {/* Item Stats */}
-                    <div className="flex w-full sm:w-auto space-x-4 text-right justify-end">
+                    {/* 3. Added items-center here too */}
+                    <div className="flex w-full sm:w-auto space-x-4 text-right justify-end items-center">
+                      
+                      {/* 4. Modified Stock div */}
                       <div className="w-24">
                         <p className="text-xs text-gray-500 uppercase font-medium">Stock</p>
                         <p className="font-bold text-lg text-gray-800">{item.currentStock}</p>
+                        {/* 5. Add the StockLevelBar component */}
+                        <StockLevelBar 
+                          currentStock={item.currentStock} 
+                          reorderPoint={item.reorderPoint} 
+                        />
                       </div>
+
                       <div className="w-24">
                         <p className="text-xs text-gray-500 uppercase font-medium">Unit Price</p>
                         <p className="font-bold text-lg text-green-600">{formatINR(item.price)}</p>
@@ -70,7 +80,6 @@ const InventoryPage = () => {
                     </div>
                   </div>
                 </Link>
-                // 4. End of Link component
               ))}
             </div>
           </div>
