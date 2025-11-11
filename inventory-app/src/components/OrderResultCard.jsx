@@ -1,32 +1,73 @@
 import React from 'react';
 import { formatINR } from '../utils/dataLogic.js';
-import { CheckCircleIcon, TruckIcon, BuildingOfficeIcon, TagIcon, CloudIcon, ShoppingCartIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, TruckIcon, BuildingOfficeIcon, TagIcon, CloudIcon, ShoppingCartIcon, MapIcon } from '@heroicons/react/24/solid';
 import StatCard from './StatCard.jsx';
-// 1. Import the context hook to get the addItemToCart function
-import { useInventory } from '../utils/InventoryContext.jsx'; 
+import { useInventory } from '../utils/InventoryContext.jsx';
+// 1. Import useNavigate and warehouse/store data
+import { useNavigate } from 'react-router-dom';
+import { warehouses, storeLocations } from '../utils/warehouseData.js';
+import { toast } from 'react-hot-toast';
 
 /**
  * A card to display the full AI decision from the FastAPI backend.
  */
 const OrderResultCard = ({ decision }) => {
-  // 2. Get the function from the context
   const { addItemToCart } = useInventory(); 
+  // 2. Initialize the navigate function
+  const navigate = useNavigate();
 
   if (!decision) return null;
 
-  // Adjust these keys to match your friend's API response
   const {
     sku,
     forecast = 0,
-    recommended_warehouse = 'N/A',
+    recommended_warehouse = 'N/A', // This should be an ID like 'wh-in-002'
     transport = 'N/A',
     total_cost = 0,
     order_quantity = 0,
+    // --- IMPORTANT ---
+    // We need the store_id that this decision was for.
+    // Ask your friend to add 'store_id' to his API response.
+    // For now, we'll assume 'S001' from the item page.
+    store_id = 'S001', 
   } = decision;
 
-  // 3. Handle the button click
   const handleAddToCart = () => {
     addItemToCart(decision);
+  };
+
+  // 3. Handle the "View on Map" click
+  const handleViewOnMap = () => {
+    // Find the warehouse object from our data file
+    // We must match the ID from the API (e.g., "W001")
+    // with the ID in our warehouseData.js (e.g., "wh-in-001")
+    //
+    // --- THIS IS A CRITICAL MATCHING STEP ---
+    // You may need to update the IDs in warehouseData.js
+    // Normalize backend warehouse ID, e.g. "W5" → "W005"
+  const normalizedWarehouseId = recommended_warehouse.startsWith("W")
+    ? recommended_warehouse.replace(/^W(\d+)$/, (_, n) => `W${n.padStart(3, "0")}`)
+    : recommended_warehouse;
+
+  const startWarehouse = warehouses.find(wh => wh.id === normalizedWarehouseId);
+
+    
+    // Get the destination store
+    const endStore = storeLocations[store_id]; 
+
+    if (!startWarehouse) {
+      toast.error(`Error: Could not find map data for warehouse ID "${recommended_warehouse}".`);
+      return;
+    }
+    if (!endStore) {
+      toast.error(`Error: Could not find map data for store ID "${store_id}".`);
+      return;
+    }
+
+    // 4. Pass the coordinates to the /logistics page via URL params
+    navigate(
+      `/logistics?startLat=${startWarehouse.pos[0]}&startLng=${startWarehouse.pos[1]}&endLat=${endStore.pos[0]}&endLng=${endStore.pos[1]}`
+    );
   };
 
   return (
@@ -38,7 +79,7 @@ const OrderResultCard = ({ decision }) => {
         </h2>
       </div>
       <p className="mt-2 text-gray-600">
-        The decision model has analyzed the forecast, inventory levels, and logistics costs to find the optimal solution for SKU: <strong>{sku}</strong>.
+        The decision model has analyzed the forecast, inventory levels, and logistics costs for SKU: <strong>{sku}</strong>.
       </p>
 
       <div className="mt-6 space-y-4">
@@ -76,15 +117,25 @@ const OrderResultCard = ({ decision }) => {
           />
         </div>
         
-        {/* --- 4. ADD THE NEW BUTTON --- */}
-        <button
-          onClick={handleAddToCart}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-base font-bold rounded-lg transition-all duration-300 shadow-md 
-                     bg-green-600 text-white hover:bg-green-700 hover:shadow-lg"
-        >
-          <ShoppingCartIcon className="h-6 w-6" />
-          <span>Add to Restock Cart</span>
-        </button>
+        {/* --- 5. UPDATED BUTTONS --- */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button
+            onClick={handleViewOnMap}
+            className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-base font-bold rounded-lg transition-all duration-300 shadow-md 
+                       bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg"
+          >
+            <MapIcon className="h-6 w-6" />
+            <span>View on Map</span>
+          </button>
+          <button
+            onClick={handleAddToCart}
+            className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-base font-bold rounded-lg transition-all duration-300 shadow-md 
+                       bg-green-600 text-white hover:bg-green-700 hover:shadow-lg"
+          >
+            <ShoppingCartIcon className="h-6 w-6" />
+            <span>Add to Cart</span>
+          </button>
+        </div>
       </div>
     </div>
   );
