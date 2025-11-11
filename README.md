@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 # Autonomous Inventory Management & Forecasting as a Service
+=======
+
+# Mini Autonomous Inventory Management & Forecasting as a Service
+This project is a proactive, data-driven system designed to solve inventory inefficiencies for retailers. It accurately predicts demand and automates restocking to create a smarter, more efficient operation by minimizing stockouts and overstocking.
+>>>>>>> 0959817e7b19c7529d5e9c68033642e37ac02d9f
 
 ## Key Features & Benefits
 
