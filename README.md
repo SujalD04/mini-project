@@ -1,5 +1,4 @@
-
-# Mini Autonomous Inventory Management & Forecasting as a Service
+# Autonomous Inventory Management & Forecasting as a Service
 
 ## Key Features & Benefits
 

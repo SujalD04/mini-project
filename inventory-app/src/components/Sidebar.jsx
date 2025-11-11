@@ -4,7 +4,8 @@ import {
   ChartBarIcon, 
   ArchiveBoxIcon, 
   ShoppingCartIcon,
-  BoltIcon 
+  BoltIcon,
+  TruckIcon
 } from '@heroicons/react/24/outline';
 
 // Helper component for navigation links
@@ -38,6 +39,7 @@ const Sidebar = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         <SidebarLink to="/" label="Dashboard" icon={ChartBarIcon} />
         <SidebarLink to="/inventory" label="Inventory" icon={ArchiveBoxIcon} />
+        <SidebarLink to="/logistics" label="Logistics" icon={TruckIcon} />
         <SidebarLink to="/cart" label="Restock Cart" icon={ShoppingCartIcon} />
       </div>
     </nav>

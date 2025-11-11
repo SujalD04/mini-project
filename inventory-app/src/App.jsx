@@ -4,6 +4,7 @@ import Layout from './components/Layout.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import InventoryPage from './pages/InventoryPage.jsx';
 import CartPage from './pages/CartPage.jsx';
+import LogisticsPage from './pages/LogisticsPage.jsx';
 // --- 1. Import the new page ---
 import ItemDetailPage from './pages/ItemDetailPage.jsx';
 
@@ -16,6 +17,8 @@ function App() {
         
         {/* --- 2. Add the new dynamic route --- */}
         <Route path="inventory/:itemId" element={<ItemDetailPage />} />
+
+        <Route path="logistics" element={<LogisticsPage />} />
         
         <Route path="cart" element={<CartPage />} />
       </Route>
