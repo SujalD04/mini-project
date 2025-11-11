@@ -1,35 +1,28 @@
 import React, { useState, useMemo, useCallback, createContext, useContext, useEffect } from 'react';
-// 1. Remove mock data, import new API
 import { fetchInventory } from './api.js'; 
 import { toast } from 'react-hot-toast';
 
-// 2. Create the context
 const InventoryContext = createContext();
 
-// 3. Create the Provider
 export const InventoryProvider = ({ children }) => {
-    // 4. Initialize state as empty
     const [inventory, setInventory] = useState([]); 
     const [searchTerm, setSearchTerm] = useState('');
     const [restockCart, setRestockCart] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [apiError, setApiError] = useState(null);
 
-    // 5. --- NEW: Load real data from API on app start ---
+    // Load real data from API on app start
     useEffect(() => {
         const loadData = async () => {
             try {
                 const inventoryData = await fetchInventory();
                 
-                // We must add the 'historicalData' and 'price' etc.
-                // that the frontend components expect.
+                // Add frontend-specific mock data
                 const formattedInventory = inventoryData.map(item => ({
                     ...item,
-                    // --- IMPORTANT ---
-                    // The new backend doesn't provide this mock data.
-                    // We must add default/mock values for the UI to work.
-                    itemId: item.sku, // Use 'sku' as the 'itemId'
-                    name: item.sku, // Use 'sku' as the 'name'
+                    itemId: item.sku, 
+                    name: item.sku, 
+                    currentStock: item.quantity_units, 
                     category: item.sku.startsWith('SKU00') ? 'Electronics' : 'Groceries',
                     price: Math.floor(Math.random() * 10000) + 500,
                     reorderPoint: 50,
@@ -46,12 +39,12 @@ export const InventoryProvider = ({ children }) => {
         loadData();
     }, []); // Empty array means this runs once on mount
 
-    // 6. Create a fast lookup map for inventory items
+    // Create a fast lookup map for inventory items
     const inventoryMap = useMemo(() => 
         new Map(inventory.map(item => [item.itemId, item])), 
     [inventory]);
 
-    // 7. Grouped inventory logic (unchanged)
+    // Grouped inventory logic
     const groupedInventory = useMemo(() => {
         let results = inventory.filter(item => 
             item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -69,14 +62,46 @@ export const InventoryProvider = ({ children }) => {
         return sortedGrouped;
     }, [inventory, searchTerm]);
 
-    // 8. generateRestockOrder (now unused, but we'll leave it)
+    // Obsolete function, kept to prevent crashes on CartPage
     const generateRestockOrder = useCallback(async (navigateToCart) => {
         console.warn("generateRestockOrder is deprecated.");
-        // This function is no longer used in the on-demand flow
-        // but we keep it here to prevent the CartPage from crashing.
+        toast.error("This function is disabled. Please run analysis on the Item Detail page.");
     }, []);
 
-    // 9. Define what the context provides (unchanged)
+    // --- NEW FUNCTION TO ADD ITEMS TO CART ---
+    const addItemToCart = useCallback((decision) => {
+        // Get the full original item details
+        const item = inventoryMap.get(decision.sku);
+        if (!item) {
+            toast.error("Error: Could not find original item data.");
+            return;
+        }
+
+        // Check if item is already in cart
+        if (restockCart.find(cartItem => cartItem.itemId === decision.sku)) {
+            toast.error("Item is already in the restock cart.");
+            return;
+        }
+
+        // Create the new cart item
+        const newCartItem = {
+            ...item, // (price, category, name, etc.)
+            predictedDemand: decision.forecast,
+            orderQuantity: decision.order_quantity,
+            // Using total_cost as reorderPoint is likely not what you want
+            // Let's use the item's original reorderPoint
+            reorderPoint: item.reorderPoint,
+            status: item.currentStock < item.reorderPoint ? 'Critical Low' : 'Restock',
+            badgeColor: item.currentStock < item.reorderPoint ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800',
+            isCritical: item.currentStock < item.reorderPoint,
+        };
+
+        // Add the new item to the cart state
+        setRestockCart(prevCart => [...prevCart, newCartItem]);
+        toast.success(`${item.name} added to restock cart!`);
+    }, [inventoryMap, restockCart]); // Add dependencies
+
+    // --- UPDATE THE CONTEXT VALUE ---
     const value = {
         inventory,
         restockCart,
@@ -86,7 +111,8 @@ export const InventoryProvider = ({ children }) => {
         isGenerating,
         apiError,
         generateRestockOrder,
-        inventoryMap
+        inventoryMap,
+        addItemToCart, // <-- Provide the new function
     };
 
     return (
@@ -96,7 +122,7 @@ export const InventoryProvider = ({ children }) => {
     );
 };
 
-// 10. Create a custom hook for easy access (unchanged)
+// Custom hook for easy access (unchanged)
 export const useInventory = () => {
     const context = useContext(InventoryContext);
     if (context === undefined) {

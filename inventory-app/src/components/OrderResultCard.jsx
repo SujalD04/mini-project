@@ -1,25 +1,33 @@
 import React from 'react';
 import { formatINR } from '../utils/dataLogic.js';
-import { CheckCircleIcon, TruckIcon, BuildingOfficeIcon, TagIcon, CloudIcon } from '@heroicons/react/24/solid';
-import StatCard from './StatCard.jsx'; // We'll reuse your StatCard!
+import { CheckCircleIcon, TruckIcon, BuildingOfficeIcon, TagIcon, CloudIcon, ShoppingCartIcon } from '@heroicons/react/24/solid';
+import StatCard from './StatCard.jsx';
+// 1. Import the context hook to get the addItemToCart function
+import { useInventory } from '../utils/InventoryContext.jsx'; 
 
 /**
  * A card to display the full AI decision from the FastAPI backend.
  */
 const OrderResultCard = ({ decision }) => {
+  // 2. Get the function from the context
+  const { addItemToCart } = useInventory(); 
+
   if (!decision) return null;
 
-  // --- IMPORTANT ---
-  // Adjust these keys (e.g., 'recommended_warehouse', 'total_cost')
-  // to match the EXACT JSON keys your friend's API returns.
+  // Adjust these keys to match your friend's API response
   const {
     sku,
     forecast = 0,
     recommended_warehouse = 'N/A',
     transport = 'N/A',
     total_cost = 0,
-    order_quantity = 0, // Ask your friend to add this if he hasn't
+    order_quantity = 0,
   } = decision;
+
+  // 3. Handle the button click
+  const handleAddToCart = () => {
+    addItemToCart(decision);
+  };
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-lg border border-indigo-200">
@@ -38,7 +46,7 @@ const OrderResultCard = ({ decision }) => {
         <div className="bg-indigo-50 p-4 rounded-lg">
           <p className="text-sm font-medium text-indigo-700">Recommended Action</p>
           <p className="text-2xl font-bold text-indigo-900">
-            Order {order_quantity} units
+            Order {order_quantity.toFixed(0)} units
           </p>
           <div className="flex items-center space-x-4 mt-2">
             <span className="flex items-center text-sm text-gray-700">
@@ -67,6 +75,16 @@ const OrderResultCard = ({ decision }) => {
             color="green"
           />
         </div>
+        
+        {/* --- 4. ADD THE NEW BUTTON --- */}
+        <button
+          onClick={handleAddToCart}
+          className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-base font-bold rounded-lg transition-all duration-300 shadow-md 
+                     bg-green-600 text-white hover:bg-green-700 hover:shadow-lg"
+        >
+          <ShoppingCartIcon className="h-6 w-6" />
+          <span>Add to Restock Cart</span>
+        </button>
       </div>
     </div>
   );
