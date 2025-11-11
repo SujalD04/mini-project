@@ -1,0 +1,4 @@
+transport_id,mode,base_cost_per_km,reliability,co2_kg_per_km
+T1,Road,5.72,0.92,0.12
+T2,Rail,1.5,0.92,0.57
+T3,Air,5.96,0.8,0.46

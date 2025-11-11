@@ -1,27 +1,57 @@
-import React, { useState, useMemo, useCallback, createContext, useContext } from 'react';
-import { generateMockInventory } from './dataLogic.js';
-import { fetchBatchRecommendations } from './api.js';
-// 1. Import toast
+import React, { useState, useMemo, useCallback, createContext, useContext, useEffect } from 'react';
+// 1. Remove mock data, import new API
+import { fetchInventory } from './api.js'; 
 import { toast } from 'react-hot-toast';
 
 // 2. Create the context
 const InventoryContext = createContext();
 
-// 3. Create the Provider (this will wrap your whole app)
+// 3. Create the Provider
 export const InventoryProvider = ({ children }) => {
-    // All your existing state from App.jsx is moved here
-    const [inventory, setInventory] = useState(() => generateMockInventory());
+    // 4. Initialize state as empty
+    const [inventory, setInventory] = useState([]); 
     const [searchTerm, setSearchTerm] = useState('');
     const [restockCart, setRestockCart] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [apiError, setApiError] = useState(null);
 
-    // Create a fast lookup map for inventory items
+    // 5. --- NEW: Load real data from API on app start ---
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const inventoryData = await fetchInventory();
+                
+                // We must add the 'historicalData' and 'price' etc.
+                // that the frontend components expect.
+                const formattedInventory = inventoryData.map(item => ({
+                    ...item,
+                    // --- IMPORTANT ---
+                    // The new backend doesn't provide this mock data.
+                    // We must add default/mock values for the UI to work.
+                    itemId: item.sku, // Use 'sku' as the 'itemId'
+                    name: item.sku, // Use 'sku' as the 'name'
+                    category: item.sku.startsWith('SKU00') ? 'Electronics' : 'Groceries',
+                    price: Math.floor(Math.random() * 10000) + 500,
+                    reorderPoint: 50,
+                    historicalData: Array(45).fill(0).map(() => ({ "Lag_Sales_D-1": Math.floor(Math.random() * 100) + 10 }))
+                }));
+                
+                setInventory(formattedInventory);
+            } catch (err) {
+                console.error(err);
+                setApiError("Failed to load inventory data from backend.");
+                toast.error("Failed to load inventory from backend.");
+            }
+        };
+        loadData();
+    }, []); // Empty array means this runs once on mount
+
+    // 6. Create a fast lookup map for inventory items
     const inventoryMap = useMemo(() => 
         new Map(inventory.map(item => [item.itemId, item])), 
     [inventory]);
 
-    // Grouped inventory logic
+    // 7. Grouped inventory logic (unchanged)
     const groupedInventory = useMemo(() => {
         let results = inventory.filter(item => 
             item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -39,62 +69,14 @@ export const InventoryProvider = ({ children }) => {
         return sortedGrouped;
     }, [inventory, searchTerm]);
 
-    // API call logic (unchanged, but now lives in the provider)
+    // 8. generateRestockOrder (now unused, but we'll leave it)
     const generateRestockOrder = useCallback(async (navigateToCart) => {
-        setIsGenerating(true);
-        setApiError(null); 
-        setRestockCart([]); 
+        console.warn("generateRestockOrder is deprecated.");
+        // This function is no longer used in the on-demand flow
+        // but we keep it here to prevent the CartPage from crashing.
+    }, []);
 
-        // --- 4. Fire a loading toast ---
-        const toastId = toast.loading('Running AI analysis...');
-
-        try {
-            const recommendations = await fetchBatchRecommendations(inventory);
-            const newCart = [];
-            
-            for (const rec of recommendations) {
-                if (rec.recommendation === 'Restock') {
-                    const item = inventoryMap.get(rec.itemId);
-                    if (item) {
-                        newCart.push({ 
-                            ...item,
-                            predictedDemand: rec.predicted_demand_next_7_days,
-                            orderQuantity: rec.suggested_quantity,
-                            reorderPoint: rec.reorder_point,
-                            status: item.currentStock < rec.reorder_point ? 'Critical Low' : 'Restock',
-                            badgeColor: item.currentStock < rec.reorder_point ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800',
-                            isCritical: item.currentStock < rec.reorder_point,
-                        });
-                    }
-                }
-            } 
-            newCart.sort((a, b) => b.isCritical - a.isCritical);
-            setRestockCart(newCart);
-            
-            // --- 5. Fire success toast ---
-            if (newCart.length > 0) {
-              toast.success(`Success! AI Order generated with ${newCart.length} items.`, { id: toastId });
-            } else {
-              toast.success("AI analysis complete. No items require restocking.", { id: toastId });
-            }
-            // --- End of change ---
-
-            navigateToCart(); // This will navigate to the cart page on success
-        } catch (err) {
-            console.error("A critical error occurred:", err);
-            const errorMsg = err.message || "Failed to connect to the AI model.";
-            setApiError(errorMsg);
-            
-            // --- 6. Fire error toast ---
-            toast.error(errorMsg, { id: toastId });
-            // --- End of change ---
-
-        } finally {
-            setIsGenerating(false);
-        }
-    }, [inventory, inventoryMap]);
-
-    // 3. Define what the context provides
+    // 9. Define what the context provides (unchanged)
     const value = {
         inventory,
         restockCart,
@@ -104,7 +86,7 @@ export const InventoryProvider = ({ children }) => {
         isGenerating,
         apiError,
         generateRestockOrder,
-        inventoryMap // Provide map for other components
+        inventoryMap
     };
 
     return (
@@ -114,7 +96,7 @@ export const InventoryProvider = ({ children }) => {
     );
 };
 
-// 4. Create a custom hook for easy access
+// 10. Create a custom hook for easy access (unchanged)
 export const useInventory = () => {
     const context = useContext(InventoryContext);
     if (context === undefined) {

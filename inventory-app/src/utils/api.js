@@ -1,36 +1,30 @@
-// This is the API endpoint of your running Flask server
-const API_URL = 'http://127.0.0.1:5000/api/recommend_batch';
+// API server is running on port 8000
+const API_URL = 'http://127.0.0.1:8000';
 
 /**
- * Fetches AI-powered recommendations for the *entire* inventory at once.
- *
- * @param {Array<object>} inventory - The entire inventory array from your state.
- * @returns {Promise<Array<object>>} - A promise that resolves to the list of recommendations.
+ * Fetches the full decision-optimized recommendation for a SINGLE item.
  */
-export const fetchBatchRecommendations = async (inventory) => {
+export const fetchDecisionForItem = async (sku, storeId = 'S001') => {
+  const response = await fetch(
+    `${API_URL}/predict?sku=${sku}&store_id=${storeId}`
+  );
 
-    // 1. Construct the payload in the *exact* format your new API expects.
-    // A single object with one key: "inventory_items"
-    const payload = {
-        inventory_items: inventory
-    };
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to get decision from AI');
+  }
+  return response.json();
+};
 
-    // 2. Make the ONE POST request to your Flask server
-    const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-    });
+/**
+ * NEW: Fetches the list of inventory items from the backend.
+ */
+export const fetchInventory = async () => {
+  const response = await fetch(`${API_URL}/inventory`);
 
-    // 3. Handle the response
-    if (!response.ok) {
-        // If the server returns an error (e.g., 500), throw an error
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch recommendations');
-    }
-
-    // 4. Return the successful JSON data (which is now a list of recommendations)
-    return response.json();
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Failed to fetch inventory');
+  }
+  return response.json();
 };

@@ -30,49 +30,26 @@ const CartSummary = ({ cart }) => {
 
 
 const CartPage = () => {
-  // Get state and the generate function from the context
-  const { restockCart, generateRestockOrder, isGenerating, apiError } = useInventory();
+  // Get state from the context
+  // Note: 'generateRestockOrder' is no longer used here
+  const { restockCart, isGenerating, apiError } = useInventory();
   const navigate = useNavigate();
-
-  const handleGenerateOrder = () => {
-    // Pass a "callback" function to navigate to the cart *after* the API call
-    generateRestockOrder(() => {
-      // This part runs on success
-      console.log("Order generated, staying on cart page.");
-    });
-  };
 
   return (
     <div className="space-y-6">
-      {/* Generate Button */}
+      {/* Generate Button - NOW DISABLED */}
       <button
-        onClick={handleGenerateOrder}
-        disabled={isGenerating}
+        disabled={true} // This button is permanently disabled in this new workflow
         className={`w-full flex items-center justify-center space-x-3 px-6 py-4 text-xl font-bold rounded-xl transition-all duration-300 shadow-lg 
-          ${isGenerating 
-            ? 'bg-indigo-300 cursor-not-allowed' 
-            : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-xl transform hover:-translate-y-0.5'}`
+          bg-gray-300 text-gray-500 cursor-not-allowed`
         }
       >
-        {isGenerating ? (
-          <>
-            <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span>Generating AI Order...</span>
-          </>
-        ) : (
-          <>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-            <span>Generate AI Restock Order</span>
-          </>
-        )}
+        {/* Updated text to explain the new demo flow */}
+        <span>Analysis is now run per-item on the Item Detail page</span>
       </button>
 
       {/* API Error Display */}
+      {/* This will still show any errors that might be set in the context */}
       {apiError && (
         <div className="p-4 my-2 bg-red-100 border border-red-400 text-red-700 rounded-lg">
           <strong>Error:</strong> {apiError}
@@ -83,7 +60,8 @@ const CartPage = () => {
       {restockCart.length === 0 && !isGenerating ? (
         <div className="text-center text-gray-500 py-16 bg-white rounded-xl shadow-lg border border-gray-100">
           <p className="text-lg">Your restock cart is empty.</p>
-          <p>Press the button above to run the AI forecast and populate the cart.</p>
+          {/* Updated text to guide the user */}
+          <p>Please navigate to an item's detail page to run AI analysis.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">

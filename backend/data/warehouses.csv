@@ -1,0 +1,6 @@
+warehouse_id,location,avg_procurement_cost_per_sku,service_score
+W1,Delhi,166.95,0.8
+W2,Hyderabad,139.53,0.74
+W3,Chennai,116.87,0.9
+W4,Mumbai,65.0,0.72
+W5,Bangalore,118.89,0.92
